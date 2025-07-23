@@ -32,8 +32,8 @@ export const useVibekit = (config: ViberkitConfig = {}) => {
         body: JSON.stringify({
           prompt: enhancedPrompt,
           language,
-          agentType: config.agentType || 'codex',
-          provider: config.provider || 'azure'
+          agentType: config.agentType || 'claude',
+          provider: config.provider || 'anthropic'
         })
       })
 

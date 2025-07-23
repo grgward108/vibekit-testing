@@ -13,6 +13,7 @@ const CodePlayground = ({ activeTemplate }: CodePlaygroundProps) => {
   const [prompt, setPrompt] = useState('')
   const [generatedCode, setGeneratedCode] = useState('')
   const [selectedLanguage, setSelectedLanguage] = useState('javascript')
+  const [sandboxId, setSandboxId] = useState<string | undefined>()
   const { generateCode, isLoading, error } = useVibekit()
 
   useEffect(() => {
@@ -29,6 +30,7 @@ const CodePlayground = ({ activeTemplate }: CodePlaygroundProps) => {
     const result = await generateCode(prompt, selectedLanguage)
     if (result.success) {
       setGeneratedCode(result.code)
+      setSandboxId(result.sandboxId)
     }
   }
 
@@ -74,7 +76,7 @@ const CodePlayground = ({ activeTemplate }: CodePlaygroundProps) => {
       </div>
       
       {generatedCode && (
-        <CodeOutput code={generatedCode} language={selectedLanguage} />
+        <CodeOutput code={generatedCode} language={selectedLanguage} sandboxId={sandboxId} />
       )}
     </div>
   )

@@ -3,11 +3,14 @@ import { useState } from 'react'
 interface CodeOutputProps {
   code: string
   language: string
+  sandboxId?: string
 }
 
-const CodeOutput = ({ code, language }: CodeOutputProps) => {
+const CodeOutput = ({ code, language, sandboxId }: CodeOutputProps) => {
   const [copied, setCopied] = useState(false)
   const [showExecution, setShowExecution] = useState(false)
+  const [files, setFiles] = useState<any>(null)
+  const [loadingFiles, setLoadingFiles] = useState(false)
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(code)
@@ -17,6 +20,23 @@ const CodeOutput = ({ code, language }: CodeOutputProps) => {
 
   const handleExecute = () => {
     setShowExecution(true)
+  }
+
+  const handleGetFiles = async () => {
+    if (!sandboxId) return
+    
+    setLoadingFiles(true)
+    try {
+      const response = await fetch(`http://localhost:3002/api/sandbox/${sandboxId}/files`)
+      const result = await response.json()
+      if (result.success) {
+        setFiles(result.files)
+      }
+    } catch (error) {
+      console.error('Error fetching files:', error)
+    } finally {
+      setLoadingFiles(false)
+    }
   }
 
   const canExecute = ['javascript', 'python', 'bash'].includes(language)
@@ -59,6 +79,19 @@ const CodeOutput = ({ code, language }: CodeOutputProps) => {
               <span>Run Code</span>
             </button>
           )}
+          
+          {sandboxId && (
+            <button
+              onClick={handleGetFiles}
+              disabled={loadingFiles}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <span>{loadingFiles ? 'Loading...' : 'Get Real Files'}</span>
+            </button>
+          )}
         </div>
       </div>
       
@@ -80,6 +113,25 @@ const CodeOutput = ({ code, language }: CodeOutputProps) => {
 > Code executed successfully!
 > Result: { success: true, message: "Operation completed" }`}
           </pre>
+        </div>
+      )}
+      
+      {files && (
+        <div className="bg-gray-900 rounded-lg p-4">
+          <h4 className="text-lg font-medium mb-4">Generated Files from Sandbox</h4>
+          <div className="space-y-4">
+            {Object.entries(files).map(([fileName, fileData]: [string, any]) => (
+              <div key={fileName} className="bg-gray-800 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h5 className="font-medium text-blue-400">{fileName}</h5>
+                  <span className="text-xs text-gray-400">{fileData.path}</span>
+                </div>
+                <pre className="text-sm bg-gray-700 p-3 rounded overflow-x-auto">
+                  <code>{fileData.content}</code>
+                </pre>
+              </div>
+            ))}
+          </div>
         </div>
       )}
       
