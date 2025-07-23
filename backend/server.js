@@ -105,7 +105,7 @@ app.post('/api/generate-code', async (req, res) => {
         type: agentType,
         provider: provider,  // 'anthropic'
         apiKey: process.env.ANTHROPIC_API_KEY,
-        model: 'claude-sonnet-4-20250514'
+        model: 'claude-3-5-haiku-20241022'
       })
       .withSandbox(e2bProvider)
       .withSecrets({
