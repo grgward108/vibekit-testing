@@ -39,6 +39,31 @@ const CodeOutput = ({ code, language, sandboxId }: CodeOutputProps) => {
     }
   }
 
+  const handleDownloadProject = async () => {
+    if (!sandboxId) return
+    
+    try {
+      const response = await fetch(`http://localhost:3002/api/sandbox/${sandboxId}/download`)
+      
+      if (!response.ok) {
+        throw new Error('Download failed')
+      }
+      
+      // Create blob and download
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `vibekit-project-${sandboxId.slice(0, 8)}.zip`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Error downloading project:', error)
+    }
+  }
+
   const canExecute = ['javascript', 'python', 'bash'].includes(language)
 
   return (
@@ -81,16 +106,28 @@ const CodeOutput = ({ code, language, sandboxId }: CodeOutputProps) => {
           )}
           
           {sandboxId && (
-            <button
-              onClick={handleGetFiles}
-              disabled={loadingFiles}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-              </svg>
-              <span>{loadingFiles ? 'Loading...' : 'Get Real Files'}</span>
-            </button>
+            <>
+              <button
+                onClick={handleGetFiles}
+                disabled={loadingFiles}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                <span>{loadingFiles ? 'Loading...' : 'View Files'}</span>
+              </button>
+              
+              <button
+                onClick={handleDownloadProject}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>Download Project</span>
+              </button>
+            </>
           )}
         </div>
       </div>

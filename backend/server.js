@@ -22,6 +22,53 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Vibekit backend is running!' });
 });
 
+// Download entire project as ZIP
+app.get('/api/sandbox/:sandboxId/download', async (req, res) => {
+  try {
+    const { sandboxId } = req.params;
+    
+    // Connect to the E2B sandbox
+    const { Sandbox } = await import('@e2b/code-interpreter');
+    const sandbox = await Sandbox.reconnect(sandboxId, {
+      apiKey: process.env.E2B_API_KEY
+    });
+    
+    // Create a ZIP of the entire project
+    const zipResult = await sandbox.runCode(`
+      cd /vibe0
+      zip -r project.zip . -x "node_modules/*" ".git/*" "*.log"
+    `);
+    
+    if (zipResult.error) {
+      throw new Error(`Failed to create ZIP: ${zipResult.error}`);
+    }
+    
+    // Read the ZIP file
+    const fileContent = await sandbox.runCode('base64 /vibe0/project.zip');
+    
+    if (fileContent.error) {
+      throw new Error(`Failed to read ZIP: ${fileContent.error}`);
+    }
+    
+    await sandbox.close();
+    
+    // Send the ZIP file as download
+    const zipBuffer = Buffer.from(fileContent.stdout.trim(), 'base64');
+    
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="vibekit-project-${sandboxId.slice(0, 8)}.zip"`);
+    res.send(zipBuffer);
+    
+  } catch (error) {
+    console.error('Error downloading project:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to download project',
+      details: error.message
+    });
+  }
+});
+
 // Get files from sandbox endpoint
 app.get('/api/sandbox/:sandboxId/files', async (req, res) => {
   try {
@@ -117,16 +164,18 @@ app.post('/api/generate-code', async (req, res) => {
     vibekit.on("update", (data) => console.log("📈 Update:", data));
     vibekit.on("error", (error) => console.log("💥 Error:", error));
 
-    // Enhanced prompt for better code generation
-    const enhancedPrompt = `Generate ${language} code for: ${prompt}
+    // Enhanced prompt for full project generation
+    const enhancedPrompt = `Create a complete ${language} project for: ${prompt}
 
-Please provide:
-1. Clean, well-commented code that follows best practices
-2. Proper error handling where appropriate
+Please generate a full project structure with multiple files including:
+1. Main implementation files with clean, well-commented code
+2. Configuration files (package.json, tsconfig.json, etc.)
 3. Type definitions if using TypeScript
-4. Export statements for reusability
+4. Test files with example tests
+5. README.md with setup and usage instructions
+6. Any necessary utility files or helpers
 
-Focus on creating production-ready code.`;
+Create an entire working project that can be downloaded and run immediately. Use best practices for project structure and file organization.`;
 
     console.log('📡 Calling Vibekit generateCode...');
 
