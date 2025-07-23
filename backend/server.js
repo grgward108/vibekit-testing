@@ -2,8 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { VibeKit } from '@vibe-kit/sdk';
-import pkg from '@e2b/code-interpreter';
-const { CodeInterpreter } = pkg;
+import { createE2BProvider } from '@vibe-kit/e2b';
 
 // Load environment variables
 dotenv.config();
@@ -40,53 +39,14 @@ app.post('/api/generate-code', async (req, res) => {
     console.log('Agent Type:', agentType);
     console.log('Provider:', provider);
 
-    // Create E2B sandbox provider
-    const e2bProvider = {
-      async create(envs = {}, agentType, workingDirectory = '/tmp') {
-        console.log('🏗️  Creating E2B sandbox...');
-        const sandbox = await CodeInterpreter.create({
-          apiKey: process.env.E2B_API_KEY,
-          template: 'base',
-          metadata: { agentType }
-        });
-        
-        return {
-          sandboxId: sandbox.sandboxId,
-          commands: {
-            async run(command, options = {}) {
-              console.log('🔧 Running command:', command);
-              const result = await sandbox.runCode(command);
-              return {
-                exitCode: result.error ? 1 : 0,
-                stdout: result.stdout || '',
-                stderr: result.stderr || result.error?.message || ''
-              };
-            }
-          },
-          async kill() {
-            await sandbox.close();
-          },
-          async pause() {
-            // E2B doesn't support pause, just log it
-            console.log('⏸️  Pause requested (not supported by E2B)');
-          },
-          async getHost(port) {
-            return `${sandbox.sandboxId}.e2b.dev:${port}`;
-          }
-        };
-      },
-      async resume(sandboxId) {
-        console.log('🔄 Resuming sandbox:', sandboxId);
-        // E2B doesn't support resume, create new one
-        return this.create();
-      }
-    };
+    // Create E2B provider using the official Vibekit method
+    const e2bProvider = createE2BProvider({
+      apiKey: process.env.E2B_API_KEY,
+      templateId: "base", // Use base template that has common tools
+    });
 
     // Initialize Vibekit
-    const vibekit = new VibeKit();
-
-    // Configure with your credentials
-    vibekit
+    const vibekit = new VibeKit()
       .withAgent({
         type: agentType,
         provider: provider,
@@ -97,11 +57,11 @@ app.post('/api/generate-code', async (req, res) => {
       .withSecrets({
         AZURE_OPENAI_ENDPOINT: process.env.AZURE_OPENAI_ENDPOINT,
         E2B_API_KEY: process.env.E2B_API_KEY
-      })
-      .withTelemetry({
-        enabled: true,
-        sessionId: `session-${Date.now()}`
       });
+
+    // Add event listeners for better debugging
+    vibekit.on("update", (data) => console.log("📈 Update:", data));
+    vibekit.on("error", (error) => console.log("💥 Error:", error));
 
     // Enhanced prompt for better code generation
     const enhancedPrompt = `Generate ${language} code for: ${prompt}
